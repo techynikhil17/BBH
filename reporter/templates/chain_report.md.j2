@@ -1,0 +1,37 @@
+# Chain Vulnerability Report: {{ chain_name }}
+
+| | |
+|---|---|
+| **Target** | {{ target }} |
+| **Chain** | {{ from_skill }} → {{ to_skill }} |
+| **Escalated severity** | {{ cvss.severity_label }} (CVSS {{ "%.1f"|format(cvss.base_score) }}) |
+| **CVSS Vector** | `{{ cvss.vector_string }}` |
+{% if escalation and escalation.applied %}| **Escalation rule** | `{{ escalation.matched_rule }}` |
+{% endif %}
+## Executive Summary
+{{ summary }}
+
+## Component Findings
+{% for component in chain_findings %}
+### Component {{ loop.index }}: {{ component.title }}
+
+{{ component.vulnerability_details }}
+{% endfor %}
+
+## Chain Demonstration
+{{ proof_of_concept }}
+
+## Combined Impact
+{{ impact_analysis }}
+
+{% if escalation and escalation.applied %}**Escalation reasoning:** {{ escalation.reasoning }}{% endif %}
+
+## Steps to Reproduce
+{{ steps_to_reproduce }}
+
+## Remediation
+{{ remediation }}
+
+## References
+- CWE: {{ references.cwe }}
+- OWASP: {{ references.owasp }}

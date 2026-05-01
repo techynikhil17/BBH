@@ -1,0 +1,25 @@
+# {{ title }}
+
+**Summary:** {{ summary }}
+
+**Vulnerability Details:**
+{{ vulnerability_details }}
+
+**Steps to Reproduce:**
+{{ steps_to_reproduce }}
+
+**Proof of Concept:**
+{{ proof_of_concept }}
+
+**Impact:**
+{{ impact_analysis }}
+
+**Severity:** {{ cvss.severity_label }} ({{ "%.1f"|format(cvss.base_score) }})
+**CVSS:3.1:** `{{ cvss.vector_string }}`
+
+**Recommended Remediation:**
+{{ remediation }}
+
+**References:**
+- CWE: {{ references.cwe }}
+- OWASP: {{ references.owasp }}

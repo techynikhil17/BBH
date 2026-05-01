@@ -1,0 +1,34 @@
+# {{ title }}
+
+| | |
+|---|---|
+| **Target** | {{ finding.target }} |
+| **Affected feature** | {{ finding.affected_feature }} |
+| **Vulnerability class** | {{ finding.vuln_class }}{% if finding.vuln_subtype %} / {{ finding.vuln_subtype }}{% endif %} |
+| **Severity** | {{ cvss.severity_label }} (CVSS {{ "%.1f"|format(cvss.base_score) }}) |
+| **CVSS Vector** | `{{ cvss.vector_string }}` |
+| **Finding ID** | {{ finding.finding_id }} |
+
+## Summary
+{{ summary }}
+
+## Vulnerability Details
+{{ vulnerability_details }}
+
+## Impact
+{{ impact_analysis }}
+
+## Steps to Reproduce
+{{ steps_to_reproduce }}
+
+## Proof of Concept
+{{ proof_of_concept }}
+
+## Remediation
+{{ remediation }}
+
+## References
+- **CWE:** {{ references.cwe }}
+- **OWASP:** {{ references.owasp }}
+{% if references.similar_reports %}- **Similar reports:** {{ references.similar_reports }}
+{% endif %}

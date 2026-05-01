@@ -1,0 +1,27 @@
+# {{ title }}
+
+**Summary:** {{ summary }}
+
+**Description:**
+{{ vulnerability_details }}
+
+**Steps To Reproduce:**
+{{ steps_to_reproduce }}
+
+**Supporting Material/References:**
+{{ proof_of_concept }}
+
+**Impact:**
+{{ impact_analysis }}
+
+**Severity:** {{ cvss.severity_label }} (CVSS {{ "%.1f"|format(cvss.base_score) }})
+**CVSS Vector:** `{{ cvss.vector_string }}`
+
+**Suggested Fix:**
+{{ remediation }}
+
+**References:**
+- CWE: {{ references.cwe }}
+- OWASP: {{ references.owasp }}
+{% if references.similar_reports %}- Similar reports: {{ references.similar_reports }}
+{% endif %}
