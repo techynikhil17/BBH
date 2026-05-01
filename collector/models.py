@@ -6,7 +6,7 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
-_VALID_SOURCES = {"hackerone", "bugcrowd", "intigriti", "yeswehack", "huntr"}
+_VALID_SOURCES = {"hackerone", "bugcrowd", "intigriti", "yeswehack", "huntr", "pentesterland"}
 
 _SEVERITY_MAP: dict[str, str] = {
     "critical": "critical",
