@@ -1,0 +1,16 @@
+{
+  "task_id": "skillgen_<vuln_class>_<vuln_subtype>",
+  "task_type": "skill_generation",
+  "vuln_class": "<canonical vuln_class>",
+  "vuln_subtype": "<vuln_subtype>",
+  "patterns": [
+    "<list of ExtractedPattern dicts from data/patterns/patterns.jsonl, scoped to this group>"
+  ],
+  "existing_skill": null,
+  "existing_patterns": null,
+  "new_pattern_urls": null,
+  "is_update": false,
+  "instruction": "<full natural-language instruction Claude Code reads — embedded by task_writer.py>",
+  "schema_template": "<contents of generator/templates/skill_template.md with placeholders substituted>",
+  "expected_output_path": "data/claude_tasks/completed/<task_id>.json"
+}
