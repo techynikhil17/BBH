@@ -75,7 +75,8 @@ pip install --upgrade pip
 pip install -r "$PROJECT_DIR/requirements.txt"
 
 echo "==> Installing Playwright browsers"
-playwright install chromium
+python -m playwright install-deps chromium
+python -m playwright install chromium
 
 echo "==> Copying .env.example → .env (if not present)"
 if [ ! -f "$PROJECT_DIR/.env" ]; then
