@@ -1,72 +1,59 @@
 from __future__ import annotations
 
-import re
 from datetime import datetime
-from typing import Optional
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
-_VALID_SOURCES = {"hackerone", "bugcrowd", "intigriti", "yeswehack", "huntr", "pentesterland"}
+from .dedup import url_hash
 
-_SEVERITY_MAP: dict[str, str] = {
+SEVERITY_MAP: dict[str, str] = {
     "critical": "critical",
     "high": "high",
     "medium": "medium",
     "low": "low",
-    "informational": "informational",
-    "none": "none",
     "p1": "critical",
     "p2": "high",
     "p3": "medium",
     "p4": "low",
     "p5": "low",
+    "informational": "low",
+    "none": "low",
 }
 
 
-def truncate_to_sentence(text: str, max_len: int) -> str:
-    if len(text) <= max_len:
+def truncate_to_sentence(text: str, max_chars: int = 2000) -> str:
+    if len(text) <= max_chars:
         return text
-    chunk = text[:max_len]
-    # Try to find last sentence boundary
-    match = None
-    for m in re.finditer(r"[.!?]", chunk):
-        match = m
-    if match and match.end() < max_len:
-        return chunk[: match.end()]
-    # Fall back to whitespace boundary
+    chunk = text[:max_chars]
+    for boundary in (".", "!", "?"):
+        idx = chunk.rfind(boundary)
+        if idx > max_chars // 2:
+            return chunk[: idx + 1]
     idx = chunk.rfind(" ")
-    if idx != -1:
+    if idx > 0:
         return chunk[:idx]
-    # Hard cut
     return chunk
 
 
-def normalize_severity(severity: str | None) -> str | None:
-    if severity is None:
+def normalize_severity(
+    raw: Optional[str],
+) -> Optional[Literal["critical", "high", "medium", "low", "unknown"]]:
+    if raw is None:
         return None
-    normalized = _SEVERITY_MAP.get(severity.lower())
-    if normalized is None:
-        return "unknown"
-    return normalized
+    return SEVERITY_MAP.get(raw.lower().strip(), "unknown")  # type: ignore[return-value]
 
 
 class RawReport(BaseModel):
-    source: str
+    source: Literal["hackerone", "bugcrowd", "pentesterland", "github", "medium"]
     title: str
     url: str
-    content_hash: str
-    collected_at: datetime
-    severity: Optional[str] = None
+    severity: Optional[Literal["critical", "high", "medium", "low", "unknown"]] = None
     program: Optional[str] = None
     bounty_usd: Optional[float] = None
     disclosed_at: Optional[datetime] = None
     vuln_type_tags: list[str] = []
     raw_content_preview: Optional[str] = None
-    source_metadata: dict = {}
-
-    @field_validator("source")
-    @classmethod
-    def source_must_be_valid(cls, v: str) -> str:
-        if v not in _VALID_SOURCES:
-            raise ValueError(f"source must be one of {_VALID_SOURCES}, got {v!r}")
-        return v
+    content_hash: str
+    collected_at: datetime
+    source_metadata: dict[str, Any] = {}
