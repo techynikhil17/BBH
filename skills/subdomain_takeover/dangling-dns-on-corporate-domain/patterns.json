@@ -1,0 +1,34 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3592387",
+    "source_platform": "hackerone",
+    "vuln_class": "subdomain_takeover",
+    "vuln_subtype": "dangling-dns-on-corporate-domain",
+    "cwe_id": "CWE-1395",
+    "affected_feature_type": "redirect_handler",
+    "affected_stack_hints": [],
+    "behavioral_signal": "A subdomain of the target organization resolves to a third-party host whose response indicates the resource has been decommissioned or is unclaimed at that provider, while the parent organization's DNS still points at it.",
+    "detection_approach": "Enumerate the target organization's subdomains via certificate transparency logs, public DNS data, passive DNS feeds, and any internal asset inventory available. Resolve each subdomain and follow CNAMEs. For records pointing at third-party services, request the resource and compare the response to a maintained set of takeover-eligible fingerprints per provider. Re-run periodically \u2014 third-party fingerprints change as services rebrand or restructure their unclaimed-resource responses, and asset inventories drift.",
+    "oob_required": false,
+    "preconditions": [
+      "Organization owns DNS records pointing at third-party services",
+      "At least one such third-party resource is no longer claimed by the organization",
+      "The provider does not enforce ownership re-verification when the resource is re-registered"
+    ],
+    "root_cause_pattern": "The DNS record outlived the third-party resource it referenced \u2014 the operator who decommissioned the resource did not also remove the pointing record, and there is no scheduled audit that catches the resulting orphan.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "xss",
+      "oauth_misconfig",
+      "cors_misconfig"
+    ],
+    "chain_reasoning": "Controlling a subdomain in the target's domain unlocks cookie scoping, CORS exemptions, OAuth callback abuse, and trust-by-name attacks against users.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.7,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

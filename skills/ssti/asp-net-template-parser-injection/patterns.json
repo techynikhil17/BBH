@@ -1,0 +1,36 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/2200329",
+    "source_platform": "hackerone",
+    "vuln_class": "ssti",
+    "vuln_subtype": "asp-net-template-parser-injection",
+    "cwe_id": "CWE-1336",
+    "affected_feature_type": "report_generator",
+    "affected_stack_hints": [
+      "asp.net",
+      "sitecore"
+    ],
+    "behavioral_signal": "An endpoint that consumes a string later parsed as a server-side template (ASP.NET TemplateParser, Razor, ERB, Jinja2, Thymeleaf) executes attacker-controlled directives when the input contains template syntax \u2014 observable as evaluation of expressions, server-side property reads, or directive execution side effects.",
+    "detection_approach": "Identify endpoints whose handler invokes a template parser at runtime \u2014 common indicators include `.ashx` handlers, dynamic Razor compilation, runtime `Page.ParseControl` calls, and any place where user input is concatenated into a markup string before parsing. Send minimal template syntax fragments (e.g., language-specific expression delimiters and harmless property accesses) and observe whether the response reflects the evaluated expression rather than the literal text. Once parsing is confirmed, escalate by testing whether the template engine exposes type instantiation, method invocation, or directive importation surfaces \u2014 these complete the chain to RCE.",
+    "oob_required": false,
+    "preconditions": [
+      "Application invokes a server-side template parser on user-influenced markup at runtime",
+      "Parser input is built by concatenation rather than a sandboxed binding model",
+      "Template engine permits directive evaluation that reaches host-language constructs"
+    ],
+    "root_cause_pattern": "User input was pasted into a string that the framework later treated as program source, so the template engine compiled and executed attacker-supplied code with the privileges of the host process.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "rce",
+      "info_disclosure"
+    ],
+    "chain_reasoning": "Server-side template injection is one of the highest-leverage primitives in web applications: most enterprise template engines expose enough host-language surface that template execution upgrades to arbitrary code execution under the application identity.",
+    "severity": "critical",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.86,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

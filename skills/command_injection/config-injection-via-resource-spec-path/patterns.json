@@ -1,0 +1,36 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/2701701",
+    "source_platform": "hackerone",
+    "vuln_class": "command_injection",
+    "vuln_subtype": "config-injection-via-resource-spec-path",
+    "cwe_id": "CWE-94",
+    "affected_feature_type": "admin_panel",
+    "affected_stack_hints": [
+      "kubernetes",
+      "nginx"
+    ],
+    "behavioral_signal": "A user-controlled string in a resource specification (Ingress path, ConfigMap key, annotation value) is rendered into a generated configuration file (nginx.conf, haproxy.cfg, sshd_config) without escaping the syntactic control characters of that target language; the loaded configuration then contains attacker-supplied directives.",
+    "detection_approach": "Identify control-plane components that translate declarative resource specs into native configuration files. For each user-supplied string in the spec, trace how it is templated into the rendered config and check whether the templater escapes characters that are syntactically meaningful in the target config language (semicolons, braces, quotes, newlines, include directives). Submit values containing those control characters and inspect the rendered configuration via the controller's introspection endpoint or by triggering a reload. Where the config language permits include of arbitrary files, look specifically at whether a write primitive elsewhere in the system can place an attacker-controlled file at an includable path.",
+    "oob_required": false,
+    "preconditions": [
+      "A controller renders user-declared resource fields into a native configuration file",
+      "Rendering does not escape the target config language's control characters",
+      "Reload of the rendered config grants the attacker a privileged execution surface"
+    ],
+    "root_cause_pattern": "The control-plane assumed declarative spec strings were 'just text' and templated them into another language without language-aware escaping; the trust boundary between user-specified resource fields and operator-generated configuration was missing.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "rce",
+      "info_disclosure"
+    ],
+    "chain_reasoning": "Config injection in a process whose config controls request routing, file inclusion, or external-program invocation routinely escalates to RCE on the controller node and to unrestricted access to backend services.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.82,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

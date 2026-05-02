@@ -1,0 +1,35 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3634400",
+    "source_platform": "hackerone",
+    "vuln_class": "ssrf",
+    "vuln_subtype": "ipv6-nat64-allowlist-bypass",
+    "cwe_id": "CWE-918",
+    "affected_feature_type": "url_import",
+    "affected_stack_hints": [
+      "ipv6"
+    ],
+    "behavioral_signal": "An SSRF protection layer that blocks well-known private/loopback ranges still permits requests to internal targets when the address is expressed via a less common IPv6 prefix (NAT64 local-use, 6to4, mapped IPv4, link-local). The fetch endpoint succeeds for an address that resolves to an internal route in the deployment environment.",
+    "detection_approach": "Identify endpoints that accept user-supplied URLs and fetch them server-side. Read the SSRF allow-list / deny-list logic and enumerate the address ranges it covers. Compare against the full list of IPv6 special-purpose registries (loopback, link-local, unique-local, IPv4-mapped, IPv4-translated, NAT64 well-known and local-use, Teredo, ORCHID, documentation, 6to4). Submit URLs whose host resolves to addresses in each missing range and observe whether the server fetches them. Pay special attention to deployment environments that route NAT64 prefixes \u2014 a working request indicates the deny-list does not cover that prefix.",
+    "oob_required": false,
+    "preconditions": [
+      "Endpoint fetches a user-supplied URL server-side",
+      "Anti-SSRF logic relies on a deny-list of address ranges rather than a positive allow-list of destinations",
+      "Deployment network routes the missing prefix to internal targets"
+    ],
+    "root_cause_pattern": "The SSRF defense was implemented as a curated deny-list of address ranges rather than a positive allow-list of explicitly-permitted destinations, and the curator did not enumerate the full IPv6 special-purpose registry; an entire address family slipped through.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "info_disclosure",
+      "rce"
+    ],
+    "chain_reasoning": "Once the SSRF reaches an internal address, common follow-ons are cloud metadata exposure (credentials \u2192 privilege escalation), internal-only admin services, and unauthenticated dev/debug endpoints \u2014 same chain shape as IPv4 SSRF.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.88,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

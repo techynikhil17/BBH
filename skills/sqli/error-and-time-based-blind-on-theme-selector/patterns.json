@@ -1,0 +1,35 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3293803",
+    "source_platform": "hackerone",
+    "vuln_class": "sqli",
+    "vuln_subtype": "error-and-time-based-blind-on-theme-selector",
+    "cwe_id": "CWE-89",
+    "affected_feature_type": "user_profile",
+    "affected_stack_hints": [
+      "mysql"
+    ],
+    "behavioral_signal": "A user-preference parameter (theme name, locale, sort order) flows into a SQL lookup whose response shape changes when SQL meta-characters or boolean conditions are submitted, and a timing-based boolean payload produces predictable response delays.",
+    "detection_approach": "On every user-preference setter or selector, identify which database table/column the value resolves against. Submit injection markers and observe error-style and content-length responses; if uniform, switch to time-based detection by appending sleep-equivalent boolean clauses and comparing response times across true/false branches. Confirm by paginating extraction across a small number of probe values to validate the response signal is repeatable.",
+    "oob_required": false,
+    "preconditions": [
+      "Preference value is used in a SQL query without parameterized binding",
+      "Database driver permits the resulting clause to alter query semantics or stall execution",
+      "Response timing or shape is observable to the requester"
+    ],
+    "root_cause_pattern": "Preference values were treated as opaque metadata and concatenated into a SQL statement; the developer's mental model of 'this is just a configuration string' did not extend to escaping at the query layer.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "info_disclosure",
+      "auth_bypass"
+    ],
+    "chain_reasoning": "Once arbitrary SQL is reachable, the standard escalation path is enumeration of authentication and payment tables, followed by credential extraction or auth-table writes.",
+    "severity": "critical",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.85,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

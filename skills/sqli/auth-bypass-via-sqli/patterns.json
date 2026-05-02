@@ -1,0 +1,34 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3564655",
+    "source_platform": "hackerone",
+    "vuln_class": "sqli",
+    "vuln_subtype": "auth-bypass-via-sqli",
+    "cwe_id": "CWE-89",
+    "affected_feature_type": "auth_endpoint",
+    "affected_stack_hints": [],
+    "behavioral_signal": "An authentication endpoint accepts crafted login input and returns a session for an account other than the one whose credentials were submitted, indicating the SQL query that selects the user record is influenced by attacker-controlled fragments.",
+    "detection_approach": "On each authentication or password-reset endpoint, inventory every parameter that flows into the user-lookup query (username, email, tenant id, any pre-auth context). For each, test whether SQL meta-characters change the response shape (login success without correct password, different error messages, time-based delays). Confirm by comparing authenticated session contents across attempts \u2014 escalation to admin or arbitrary user typically indicates the lookup predicate is being subverted, not just an error path.",
+    "oob_required": false,
+    "preconditions": [
+      "Authentication path constructs a SQL query string with concatenated user input",
+      "User-record selection is the authority for who the resulting session represents",
+      "No layer downstream re-validates that the supplied password matches the resolved user"
+    ],
+    "root_cause_pattern": "User input was concatenated into the SQL predicate that decides which user record the login resolves to, so an attacker can both authenticate successfully and choose which user to authenticate as.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "auth_bypass",
+      "info_disclosure",
+      "rce"
+    ],
+    "chain_reasoning": "SQLi in the auth path is a top-of-funnel primitive \u2014 combined with admin-flag selection it yields full account takeover, and admin sessions in chat / collaboration platforms commonly expose code-execution surfaces (integration scripts, webhook handlers) that complete the chain to RCE.",
+    "severity": "critical",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.7,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

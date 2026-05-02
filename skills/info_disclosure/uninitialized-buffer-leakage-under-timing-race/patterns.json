@@ -1,0 +1,34 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3405778",
+    "source_platform": "hackerone",
+    "vuln_class": "info_disclosure",
+    "vuln_subtype": "uninitialized-buffer-leakage-under-timing-race",
+    "cwe_id": "CWE-908",
+    "affected_feature_type": "api_endpoint",
+    "affected_stack_hints": [
+      "node.js"
+    ],
+    "behavioral_signal": "Allocations that are documented as zero-filled (e.g., Buffer.alloc) sometimes contain data from prior operations when a specific timing condition holds \u2014 observable as residual application data in buffers handed to a fresh request.",
+    "detection_approach": "For runtimes that expose ostensibly-zero allocators, audit the implementation path that fulfills the allocation, paying attention to any optimization that elides the zero-fill under a timeout, pool-reuse, or resource-pressure code path. Build a probe that requests many fresh allocations under load and inspects them for non-zero bytes. Where the runtime is application-embedded (Node.js, Python, JVM), feed externally-supplied requests that consume large buffers and immediately request fresh allocations \u2014 the residue indicates either a missing zero-fill or a write-after-free into a returned-to-pool buffer.",
+    "oob_required": false,
+    "preconditions": [
+      "Runtime offers an allocation API documented as returning zeroed memory",
+      "Implementation has an optimized path (timeout/pool/preallocated cache) that may elide the zero-fill",
+      "Adjacent operations write sensitive bytes into the memory pool used to satisfy the allocation"
+    ],
+    "root_cause_pattern": "An optimization that pooled buffers across operations broke the zero-fill invariant the allocator's API contract promised; the contract was no longer enforced on every code path.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "info_disclosure"
+    ],
+    "chain_reasoning": "Cross-request memory leakage in a multi-tenant runtime can leak session secrets, request bodies, and credentials between unrelated users \u2014 a one-way disclosure primitive that supports follow-on takeover.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.78,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

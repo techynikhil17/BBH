@@ -1,0 +1,34 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3277276",
+    "source_platform": "hackerone",
+    "vuln_class": "sqli",
+    "vuln_subtype": "unauthenticated-post-without-csrf",
+    "cwe_id": "CWE-89",
+    "affected_feature_type": "api_endpoint",
+    "affected_stack_hints": [],
+    "behavioral_signal": "A POST endpoint accepts requests without authentication and without a CSRF token, and a parameter in its body reaches a SQL query whose response shape changes when SQL meta-characters or boolean expressions are submitted.",
+    "detection_approach": "Map every POST endpoint that does not require authentication and inventory the parameters in its request body. For each parameter, submit minimally-disruptive SQL markers and compare responses against an unmodified baseline \u2014 error messages, content-length deltas, timing differences. Audit the same endpoints for additional injection sinks (stored XSS via display fields) since unauthenticated public-facing writes commonly accumulate multiple weaknesses on the same surface.",
+    "oob_required": false,
+    "preconditions": [
+      "Endpoint accepts unauthenticated requests",
+      "Body parameter flows into a SQL query without parameterized binding",
+      "Response shape varies with the parsed query (error, content-length, timing)"
+    ],
+    "root_cause_pattern": "An endpoint exposed to anonymous traffic concatenated user-supplied bytes into a SQL statement; absence of authentication amplifies a classic SQLi root cause into a high-traffic, low-effort exploit surface.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "auth_bypass",
+      "info_disclosure",
+      "xss"
+    ],
+    "chain_reasoning": "Unauthenticated SQLi compounds with stored XSS on the same surface \u2014 an attacker can plant payloads at scale and harvest authenticated session cookies or admin credentials, then pivot via the SQLi-extracted database contents.",
+    "severity": "critical",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.78,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

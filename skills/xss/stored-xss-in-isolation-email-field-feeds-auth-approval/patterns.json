@@ -1,0 +1,33 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3423950",
+    "source_platform": "hackerone",
+    "vuln_class": "xss",
+    "vuln_subtype": "stored-xss-in-isolation-email-field-feeds-auth-approval",
+    "cwe_id": "CWE-79",
+    "affected_feature_type": "auth_endpoint",
+    "affected_stack_hints": [],
+    "behavioral_signal": "A field that is rendered server-side or in an admin/operator surface (here: an isolated-browser email field) accepts unescaped script content and later runs in a privileged context that influences an authentication-approval workflow.",
+    "detection_approach": "Inventory every input that flows into a privileged review or approval surface (admin panels, operator review queues, isolation/sandbox dashboards, security review consoles). For each input, trace how it is rendered downstream. Where rendering uses an HTML-as-text path (innerHTML, untemplated string interpolation, dangerouslySetInnerHTML) confirm whether the application escapes at write-time. Submit benign markers and observe whether they appear escaped or executed. Where the consuming surface itself can affect an authentication or session workflow (approve/reject, allow-list, MFA reset), the XSS becomes a takeover primitive even when the original input was attacker-only-readable.",
+    "oob_required": false,
+    "preconditions": [
+      "Input field is rendered into a privileged or operator surface that influences authentication outcomes",
+      "Rendering path does not escape user-supplied content",
+      "Operator or system context retains authority to approve or reject the requested authentication action"
+    ],
+    "root_cause_pattern": "Inputs whose values were assumed to be 'just an email' or 'just a label' were rendered into HTML on the privileged side without escaping. Trust in the input shape was the missing check, not script-source validation.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "auth_bypass",
+      "csrf"
+    ],
+    "chain_reasoning": "When the privileged surface that runs the script also drives an authentication-approval workflow, a single XSS becomes auto-approval \u2014 combining trivially with CSRF on the approval endpoint to remove all human-in-the-loop friction.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.72,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3578842",
+    "source_platform": "hackerone",
+    "vuln_class": "sqli",
+    "vuln_subtype": "blind-or-error-based-on-corporate-endpoint",
+    "cwe_id": "CWE-89",
+    "affected_feature_type": "search_endpoint",
+    "affected_stack_hints": [],
+    "behavioral_signal": "An endpoint returns content shape changes (different result counts, error messages, response timings) when SQL meta-characters or boolean expressions are appended to a parameter, indicating that the value reaches a SQL query without parameterization.",
+    "detection_approach": "On every parameter that flows into search, lookup, filter, sort, or report-generation endpoints, submit minimally-disruptive markers (single quote, double quote, comment markers, equivalent boolean expressions) and compare responses against an unmodified baseline. Look for: stack-trace style errors, content-length deltas, response-time deltas under boolean conditions, and behavior consistent with parameterized vs concatenated query construction. Confirm by varying the boolean to produce both true and false branches, and check that timing-based payloads produce predictable delays.",
+    "oob_required": false,
+    "preconditions": [
+      "Endpoint constructs a SQL query whose contents include a user-supplied value",
+      "Query construction does not use parameterized placeholders for that value",
+      "Database driver permits the resulting statement to alter query semantics"
+    ],
+    "root_cause_pattern": "Query was assembled by string concatenation rather than parameterized binding, so user-controlled bytes alter the parsed SQL rather than being treated as data.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "auth_bypass",
+      "info_disclosure",
+      "rce"
+    ],
+    "chain_reasoning": "SQLi commonly chains to credential extraction, account takeover via auth-table writes, and (when DB privileges allow) to RCE via UDFs, file writes, or command execution paths.",
+    "severity": "critical",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.62,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

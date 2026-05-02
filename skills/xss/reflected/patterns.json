@@ -1,0 +1,32 @@
+[
+  {
+    "source_url": "https://umuttkyrdgn.medium.com/this-is-my-third-bug-bounty-report-how-i-found-an-xss-vulnerability-c2a637d86b2e?source=rss------bug_bounty-5",
+    "source_platform": "medium",
+    "vuln_class": "xss",
+    "vuln_subtype": "reflected",
+    "cwe_id": "CWE-79",
+    "affected_feature_type": "user_profile",
+    "affected_stack_hints": [],
+    "behavioral_signal": "User-supplied input is reflected into the rendered HTML response of an application page without context-appropriate output encoding, allowing arbitrary script execution in the browser of any user who views the affected page.",
+    "detection_approach": "Identify input fields and URL parameters whose values appear back in the rendered page (search forms, profile fields, error messages, redirect URLs). Submit benign sentinel strings containing special characters relevant to the rendering context (HTML, attribute, JS, URL) and inspect the response markup to determine whether the value was encoded for that context. Where the sentinel appears unencoded inside an executable context, treat the field as potentially XSS-vulnerable and document the reflection vector without crafting a working exploit.",
+    "oob_required": false,
+    "preconditions": [
+      "User input is rendered back into an HTML response without server-side or client-side context-aware encoding",
+      "The reflection occurs in an executable context (HTML body, script, attribute) rather than a strictly text-only sink"
+    ],
+    "root_cause_pattern": "Developer assumed input was either trusted or escaped earlier in the pipeline, and rendered it into HTML using a templating mode (or string concatenation) that does not apply context-aware encoding by default.",
+    "chain_potential": "medium",
+    "chain_targets": [
+      "auth_bypass",
+      "csrf"
+    ],
+    "chain_reasoning": "Reflected XSS in an authenticated context can read CSRF tokens and session storage, enabling state-changing requests on behalf of the victim and effectively bypassing CSRF protections.",
+    "severity": "medium",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.45,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

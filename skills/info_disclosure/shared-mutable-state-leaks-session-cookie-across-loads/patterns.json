@@ -1,0 +1,36 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3475626",
+    "source_platform": "hackerone",
+    "vuln_class": "info_disclosure",
+    "vuln_subtype": "shared-mutable-state-leaks-session-cookie-across-loads",
+    "cwe_id": "CWE-1188",
+    "affected_feature_type": "session_management",
+    "affected_stack_hints": [
+      "android",
+      "webview"
+    ],
+    "behavioral_signal": "A WebView or HTTP-client component reuses request configuration (custom headers, cookies, auth tokens) across navigations because the configuration is held in a static or process-global field rather than scoped to the current navigation.",
+    "detection_approach": "For each WebView or in-app browser that loads multiple destinations, inspect how request headers and cookies are configured. Identify any state held in static or singleton storage (CUSTOM_HEADERS, defaultHeaders, sessionDefault). Trace whether navigation to a new origin clears or scopes that state. Trigger a navigation that originally set authenticated headers, then navigate to an attacker-controlled origin within the same component and observe the outbound request \u2014 leaked headers indicate cross-origin state retention. Combine with Cookie/Authorization-bearing flows to confirm session leakage.",
+    "oob_required": true,
+    "preconditions": [
+      "App embeds a WebView or HTTP client that loads multiple distinct origins over its lifetime",
+      "Request configuration is stored in static / shared / singleton state rather than per-navigation",
+      "The configuration includes authentication headers or cookies bound to one of the loaded origins"
+    ],
+    "root_cause_pattern": "Lifetime / scope mismatch: configuration meant to be per-navigation was stored in process-global state, so a header bound to one origin's session is sent on the next navigation regardless of destination.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "auth_bypass",
+      "csrf"
+    ],
+    "chain_reasoning": "Leaked session cookies grant the attacker full account takeover; the typical chain is to combine a navigation primitive (open-redirect or attacker-deeplink) with this leak to deliver the cookie to a controlled origin.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.78,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

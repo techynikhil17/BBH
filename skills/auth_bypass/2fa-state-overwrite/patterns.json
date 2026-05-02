@@ -1,0 +1,33 @@
+[
+  {
+    "source_url": "https://medium.com/@HackerMD/bypassing-2fa-via-state-overwrite-a-tale-of-logic-flaws-and-waf-evasion-7e8c15a76282?source=rss------bug_bounty-5",
+    "source_platform": "medium",
+    "vuln_class": "auth_bypass",
+    "vuln_subtype": "2fa-state-overwrite",
+    "cwe_id": "CWE-287",
+    "affected_feature_type": "auth_endpoint",
+    "affected_stack_hints": [],
+    "behavioral_signal": "After completing a partial authentication step (password verified, 2FA pending), submitting a separate state-changing request alters the server-tracked authentication state in a way that lets the user proceed past the 2FA gate without supplying the second factor.",
+    "detection_approach": "Map the multi-step authentication flow end-to-end: identify each request the client sends between password submission and the protected resource, including any session, cookie, or server-side state mutated along the way. Look for endpoints that update authentication-state-relevant flags (mfa_completed, auth_step, factor_status) and that can be reached while the session is in the partial-auth state. Test whether replaying a state-change request from a fully-authenticated session, or directly invoking the state-update endpoint with crafted parameters, advances the partial session past the 2FA gate. Also verify whether server-side state and client-side cookies must agree, or whether one alone is consulted.",
+    "oob_required": false,
+    "preconditions": [
+      "Application uses multi-step authentication where intermediate state is persisted server-side or in cookies between the password step and the 2FA step",
+      "An endpoint exists that can update the relevant authentication-state flag without re-checking the 2FA factor",
+      "The 2FA gate trusts the state flag rather than re-deriving completion from cryptographic evidence (e.g., an HMAC over the OTP)"
+    ],
+    "root_cause_pattern": "Developer treated the multi-step auth state as a sequence of independent flag updates rather than as a chain of cryptographically-bound assertions. The 2FA gate read a session-state flag that was writable by other endpoints, instead of verifying the user had presented the actual second factor in the current authentication context.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "idor",
+      "info_disclosure"
+    ],
+    "chain_reasoning": "A 2FA bypass directly enables account takeover; once authenticated as the victim, all per-user IDOR and info disclosure surfaces become accessible at maximum impact.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.78,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

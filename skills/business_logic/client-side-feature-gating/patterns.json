@@ -1,0 +1,32 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3183520",
+    "source_platform": "hackerone",
+    "vuln_class": "business_logic",
+    "vuln_subtype": "client-side-feature-gating",
+    "cwe_id": "CWE-602",
+    "affected_feature_type": "subscription_management",
+    "affected_stack_hints": [],
+    "behavioral_signal": "A user-modifiable preference (ad display, theme, feature flag) toggles a paid/premium-only feature without the server re-validating the user's entitlement on each preference write.",
+    "detection_approach": "Identify endpoints that update user preferences linked to paid features (ad-free, advanced settings, premium toggles). As a free/non-entitled user, attempt to write the preference directly via the API or by replaying the request a paid user would send. Compare server response and resulting account state \u2014 a successful write that produces the entitlement is a privilege check bypass. Repeat across endpoints that read or write subscription-affecting flags, watching for any path that lacks an entitlement re-check.",
+    "oob_required": false,
+    "preconditions": [
+      "Application offers a feature gated behind a paid tier",
+      "The gating is partly or fully expressed as a user preference flag stored on the user record",
+      "Preference-update endpoint does not re-validate the actor's tier before persisting the new value"
+    ],
+    "root_cause_pattern": "The developer enforced the entitlement only at the UI / display layer (hide the toggle for non-premium users) instead of on the server when the preference write happens, so any client that posts the underlying preference value bypasses the gate.",
+    "chain_potential": "low",
+    "chain_targets": [
+      "mass_assignment"
+    ],
+    "chain_reasoning": "Often this same endpoint is also susceptible to mass-assignment style abuse where additional account-tier flags can be smuggled into the same write.",
+    "severity": "high",
+    "payout_usd": 3000.0,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.78,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

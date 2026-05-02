@@ -1,0 +1,35 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3556769",
+    "source_platform": "hackerone",
+    "vuln_class": "business_logic",
+    "vuln_subtype": "uncaught-exception-in-tls-callback",
+    "cwe_id": "CWE-248",
+    "affected_feature_type": "session_token_endpoint",
+    "affected_stack_hints": [
+      "node.js",
+      "tls"
+    ],
+    "behavioral_signal": "A network-facing service crashes its process or worker when a client triggers a code path through a callback that throws synchronously, with no try/catch boundary upstream.",
+    "detection_approach": "Inventory user-reachable callbacks invoked during early connection setup (TLS SNI/ALPN selection, protocol upgrades, auth challenge handlers). Audit each call site for whether the runtime wraps the callback in a try/catch and routes thrown exceptions through the connection's error path. Where a callback's input is attacker-controlled (e.g., SNI host string, ALPN name list), test whether crafted inputs produce runtime errors (type errors, range errors, undefined property access) and whether those exceptions bubble past the connection layer to crash the process. Inspect changelogs for sibling fixes \u2014 when one callback was patched, others on the same code path are commonly missed.",
+    "oob_required": false,
+    "preconditions": [
+      "Service exposes a network listener that invokes user-provided or library callbacks during connection setup",
+      "Callback is invoked synchronously and a thrown exception escapes the connection-scoped error handler",
+      "Process / worker has no other layer that catches and isolates the failure"
+    ],
+    "root_cause_pattern": "Exception isolation was added at one callback site but not symmetrically at the parallel callbacks invoked through the same setup path; the developer fixed the reported instance and did not audit sibling callbacks for the same shape.",
+    "chain_potential": "low",
+    "chain_targets": [
+      "rate_limit_bypass"
+    ],
+    "chain_reasoning": "Crashing-on-input gives an attacker a denial primitive that can be amplified when the listener has no rate limit or cooldown on connection-setup failures.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.82,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

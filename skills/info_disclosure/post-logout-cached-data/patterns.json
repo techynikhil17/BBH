@@ -1,0 +1,33 @@
+[
+  {
+    "source_url": "https://infosecwriteups.com/when-logout-isnt-really-goodbye-a-subtle-data-exposure-bug-271b683ddb9a?source=rss------bug_bounty-5",
+    "source_platform": "medium",
+    "vuln_class": "info_disclosure",
+    "vuln_subtype": "post-logout-cached-data",
+    "cwe_id": "CWE-525",
+    "affected_feature_type": "session_management",
+    "affected_stack_hints": [],
+    "behavioral_signal": "After a user logs out, previously rendered pages or cached responses still display sensitive account data when accessed via browser back navigation, history, or cached responses.",
+    "detection_approach": "Authenticate as a test user, navigate through pages that display account-specific data, log out via the application's official flow, then attempt to access the same pages via browser back button, browser history, and direct URL re-entry. Inspect HTTP response headers for cache-control directives (no-store, no-cache, private). Check if browser caches sensitive responses, and whether the application invalidates server-side rendered tokens or session cookies on logout. Compare authenticated and unauthenticated response bodies for the same URL after logout.",
+    "oob_required": false,
+    "preconditions": [
+      "Application has a logout flow that ends the user session",
+      "Pages rendered during the session contain user-specific or sensitive data",
+      "Server responses lack appropriate Cache-Control: no-store / private directives, OR client-side state is not cleared on logout"
+    ],
+    "root_cause_pattern": "The developer treated logout as a server-side session termination event but did not consider that the browser, intermediate caches, or client-side state retain rendered pages and responses that contained the authenticated user's data. Cache-control headers and client-state-clearing logic were missing from sensitive endpoints.",
+    "chain_potential": "medium",
+    "chain_targets": [
+      "idor",
+      "auth_bypass"
+    ],
+    "chain_reasoning": "If cached pages contain identifiers (account IDs, session tokens, internal URLs), an attacker with brief physical access or a shared browser can extract those for follow-on IDOR or session-hijack attacks against the same account.",
+    "severity": "low",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.7,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

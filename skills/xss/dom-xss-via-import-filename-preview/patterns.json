@@ -1,0 +1,33 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3608199",
+    "source_platform": "hackerone",
+    "vuln_class": "xss",
+    "vuln_subtype": "dom-xss-via-import-filename-preview",
+    "cwe_id": "CWE-79",
+    "affected_feature_type": "import_function",
+    "affected_stack_hints": [],
+    "behavioral_signal": "A preview UI rendered for a user-supplied artifact (filename, document title, paste content) executes script when the artifact's metadata contains markup, with no payload-bearing interaction other than viewing the preview.",
+    "detection_approach": "On each import or upload feature, inspect how the client-side preview renders artifact metadata (filename, content-type, document title). Identify any property assigned via innerHTML, document.write, jQuery .html(), or similar non-escaping sink. Submit artifacts whose metadata contains HTML markers and observe whether the markup is parsed in the preview view. For features where the preview is shown to other users (shared imports, collaborative spaces), confirm whether one viewer's preview also reaches a victim's browser session \u2014 that determines the upgrade from self-XSS to one-click takeover. Probe the chain by triggering authenticated state-change requests (email change, token creation) from the preview-execution context.",
+    "oob_required": false,
+    "preconditions": [
+      "Client-side code renders a user-supplied string into the DOM via an unescaping sink",
+      "The user-supplied string can be set without sanitization on the upload / import path",
+      "Some viewer of the preview shares the application origin and an authenticated session"
+    ],
+    "root_cause_pattern": "Filename-derived metadata was rendered into the DOM as HTML rather than as text, on the assumption that filenames are 'just text', so any markup smuggled into the filename executes in the previewer's session context.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "auth_bypass",
+      "csrf"
+    ],
+    "chain_reasoning": "DOM XSS in an authenticated preview composes naturally with same-origin state-change endpoints (email change, token issuance, account deletion) to escalate from script execution to full account takeover; this report is an instance of exactly that chain.",
+    "severity": "high",
+    "payout_usd": 500.0,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.85,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

@@ -1,0 +1,33 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3340797",
+    "source_platform": "hackerone",
+    "vuln_class": "info_disclosure",
+    "vuln_subtype": "unauthenticated-static-file-exposure",
+    "cwe_id": "CWE-922",
+    "affected_feature_type": "file_download",
+    "affected_stack_hints": [],
+    "behavioral_signal": "Unauthenticated requests for predictable file paths under the application's web root return files containing credentials, configuration, license information, or other sensitive data in clear text.",
+    "detection_approach": "Enumerate the application's served path tree using a wordlist of common config / secret filenames (application config, environment files, license files, debug logs, installer artifacts). Make unauthenticated GET requests for each candidate path and inspect responses for credentials, API keys, internal hostnames, certificates, or other secrets. Pay attention to paths that are typically packaged with the deployable artifact (gateway, proxy, or appliance images often ship with example configs left in a publicly-served directory).",
+    "oob_required": false,
+    "preconditions": [
+      "Application serves static files from a directory whose contents include sensitive artifacts",
+      "Sensitive values are stored in clear text rather than encrypted or referenced via a secret-management layer",
+      "No authentication or authorization layer gates the static-file path"
+    ],
+    "root_cause_pattern": "The deployment bundle placed sensitive configuration alongside other static resources and the static-file handler served the directory without an access control layer, so files intended for operator-only access become a public surface.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "auth_bypass",
+      "rce"
+    ],
+    "chain_reasoning": "Credentials disclosed by this class commonly include service-account passwords or API tokens that unlock authenticated administrative paths, which themselves frequently expose code-execution surfaces.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.78,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

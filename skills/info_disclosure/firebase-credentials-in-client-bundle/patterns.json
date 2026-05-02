@@ -1,0 +1,38 @@
+[
+  {
+    "source_url": "https://0xm0r4d.medium.com/from-source-code-review-to-critical-vulnerability-critical-firebase-api-takeover-e8f2ffa426bd?source=rss------bug_bounty-5",
+    "source_platform": "medium",
+    "vuln_class": "info_disclosure",
+    "vuln_subtype": "firebase-credentials-in-client-bundle",
+    "cwe_id": "CWE-798",
+    "affected_feature_type": "api_endpoint",
+    "affected_stack_hints": [
+      "firebase",
+      "gcp",
+      "javascript"
+    ],
+    "behavioral_signal": "Firebase API keys, project IDs, and database URLs are statically embedded in the front-end JavaScript bundle, AND the corresponding Firebase Realtime Database / Firestore security rules are permissive enough to allow direct client-side read or write operations without authenticated session checks.",
+    "detection_approach": "Pull the production JavaScript bundles (main.js, vendor.js, env.js) and grep the source for Firebase-config shapes \u2014 apiKey, authDomain, databaseURL, projectId, storageBucket, messagingSenderId, appId. When a config is found, attempt to instantiate a Firebase client with those credentials in a controlled environment and probe the database / Firestore root with a read query. Inspect the response for permission-denied vs allowed semantics. Where reads succeed, attempt a benign write to a non-production-looking path to determine whether the security rules are also write-permissive. Never read or modify real user data; treat any access to non-test paths as escalation-required and stop.",
+    "oob_required": false,
+    "preconditions": [
+      "Application uses Firebase (Realtime Database, Firestore, or Storage) on the client side",
+      "Firebase configuration is shipped to the browser as static JavaScript",
+      "Firebase security rules permit unauthenticated, or weakly-scoped, read or write operations on at least one path that contains business data"
+    ],
+    "root_cause_pattern": "Developers treated the Firebase web SDK config as a public identifier (which it technically is) and assumed the security rules layer would prevent abuse. The security rules were not actually tightened in production \u2014 defaulting to allow-read-or-allow-write on broad paths during development and never being narrowed before launch.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "auth_bypass",
+      "idor",
+      "info_disclosure"
+    ],
+    "chain_reasoning": "Direct database read access against a permissive Firebase rule set bypasses every server-side authorization layer the application has. From there an attacker can enumerate user records (mass IDOR), exfiltrate PII (info disclosure), or \u2014 if write rules are also loose \u2014 modify role/permission documents to take over privileged accounts (auth bypass / privesc).",
+    "severity": "critical",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.82,
+    "skipped": false,
+    "skip_reason": null
+  }
+]

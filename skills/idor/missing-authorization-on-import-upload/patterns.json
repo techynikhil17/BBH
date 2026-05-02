@@ -1,0 +1,33 @@
+[
+  {
+    "source_url": "https://hackerone.com/reports/3506183",
+    "source_platform": "hackerone",
+    "vuln_class": "idor",
+    "vuln_subtype": "missing-authorization-on-import-upload",
+    "cwe_id": "CWE-862",
+    "affected_feature_type": "import_function",
+    "affected_stack_hints": [],
+    "behavioral_signal": "An upload or replacement endpoint that takes a resource identifier (migration id, export id, batch id) accepts a write from a requester who has no relationship to the resource, allowing arbitrary overwrite of another tenant's artifact.",
+    "detection_approach": "Identify all endpoints that ingest or replace large artifacts addressed by an opaque identifier (imports, exports, migrations, snapshots, batch jobs). For each, authenticate as a low-privilege user and submit a write addressed to an identifier owned by a different user/account. Confirm whether the write succeeds and whether the resulting artifact is later served to the original owner. Pay attention to multi-step flows where the initial authorization happens at job-creation but the file-upload sub-step relies only on the identifier.",
+    "oob_required": false,
+    "preconditions": [
+      "Multi-step workflow where the artifact upload uses only an identifier issued in an earlier step",
+      "Upload step does not re-validate that the requesting session owns the identifier",
+      "Identifiers are guessable, leakable, or otherwise enumerable across tenants"
+    ],
+    "root_cause_pattern": "Authorization was performed at job-initiation time but the subsequent upload endpoint trusted the identifier alone, breaking the invariant that the writer must equal the owner of the resource.",
+    "chain_potential": "high",
+    "chain_targets": [
+      "info_disclosure",
+      "business_logic"
+    ],
+    "chain_reasoning": "Overwriting another tenant's import artifact lets an attacker plant content the victim later trusts (configuration, code, exported records) \u2014 a classic cross-tenant data integrity primitive that supports follow-on takeover and disclosure.",
+    "severity": "high",
+    "payout_usd": null,
+    "is_novel": false,
+    "novel_description": null,
+    "extraction_confidence": 0.85,
+    "skipped": false,
+    "skip_reason": null
+  }
+]
