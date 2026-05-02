@@ -50,6 +50,22 @@ async def test_deduplicates_cross_feed_urls():
     assert urls.count(same_url) == 1
 
 
+async def test_deduplicates_cross_feed_query_variants():
+    """The same Medium article appears in multiple tag feeds with different
+    `?source=rss------<tag>-5` tracking params. Those should collapse to one."""
+    base = "https://medium.com/@author/the-same-post-abc123"
+    feeds = [
+        make_feed([FeedEntry("Same", f"{base}?source=rss------bug_bounty-5")]),
+        make_feed([FeedEntry("Same", f"{base}?source=rss------bugbounty-5")]),
+        make_feed([FeedEntry("Same", f"{base}?gi=deadbeef&utm_source=feed")]),
+    ]
+
+    with patch("collector.sources.medium_rss.feedparser.parse", side_effect=feeds):
+        reports = [r async for r in MediumRSSCollector().collect(10)]
+
+    assert len(reports) == 1
+
+
 async def test_respects_limit():
     feeds = [
         make_feed([FeedEntry(f"A{i}", f"https://medium.com/a{i}") for i in range(10)]),

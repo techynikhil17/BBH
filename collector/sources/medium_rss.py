@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 
 import feedparser
 
-from ..dedup import url_hash
+from ..dedup import normalize_url, url_hash
 from ..models import RawReport, truncate_to_sentence
 from .base import AsyncCollector
 
@@ -43,9 +43,12 @@ class MediumRSSCollector(AsyncCollector):
                     return
 
                 link = entry.get("link", "")
-                if not link or link in seen:
+                if not link:
                     continue
-                seen.add(link)
+                canonical = normalize_url(link)
+                if canonical in seen:
+                    continue
+                seen.add(canonical)
 
                 title = entry.get("title", "").strip()
                 summary = entry.get("summary", "") or ""
