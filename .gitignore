@@ -2,6 +2,15 @@
 data/raw/
 data/logs/
 data/reports.db
+data/orchestrator_state.db
+data/sessions/active_scope.json
+data/sessions/sessions.db
+data/sessions/*/
+data/patterns/*.db
+data/patterns/*.jsonl
+data/recon/*.json
+data/claude_tasks/pending/*.json
+data/claude_tasks/completed/*.json
 venv/
 __pycache__/
 *.pyc
