@@ -12,19 +12,20 @@ from rich.live import Live
 from rich.table import Table
 
 from .config import ALL_SOURCES, DB_PATH, JSONL_OUTPUT, LOG_DIR
-from .sources.bugcrowd import BugcrowdCollector
 from .sources.github_writeups import GitHubWriteupsCollector
 from .sources.hackerone import HackerOneCollector
 from .sources.medium_rss import MediumRSSCollector
-from .sources.pentesterland import PentesterLandCollector
 from .storage import Storage
 
 console = Console()
 
+# Active collectors only. The Bugcrowd and Pentesterland modules still live
+# under ``collector/sources/`` (and their unit tests still pass) but they're
+# not invokable from the CLI — see ``DEPRECATED_SOURCES`` in config.py for
+# the rationale (Bugcrowd: no public title/description content;
+# Pentesterland: site dormant since 2022).
 _COLLECTORS = {
     "hackerone": HackerOneCollector,
-    "bugcrowd": BugcrowdCollector,
-    "pentesterland": PentesterLandCollector,
     "github": GitHubWriteupsCollector,
     "medium": MediumRSSCollector,
 }

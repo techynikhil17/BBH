@@ -46,7 +46,7 @@ def test_collect_all_sources():
     with patch("collector.main.Storage", return_value=mock_storage):
         with patch("collector.main.get_collector", return_value=mock_collector):
             runner = CliRunner()
-            result = runner.invoke(cli, ["collect", "--sources", "pentesterland", "--limit", "10"])
+            result = runner.invoke(cli, ["collect", "--sources", "medium", "--limit", "10"])
     assert result.exit_code == 0
 
 
@@ -54,3 +54,13 @@ def test_collect_invalid_source():
     runner = CliRunner()
     result = runner.invoke(cli, ["collect", "--sources", "notasource", "--limit", "5"])
     assert result.exit_code != 0 or "error" in result.output.lower()
+
+
+def test_deprecated_sources_rejected():
+    """Bugcrowd and Pentesterland are deprecated upstream sources — they're
+    no longer registered in _COLLECTORS, so the CLI should reject them with
+    the same "Unknown source" error as a typo."""
+    runner = CliRunner()
+    for source in ("bugcrowd", "pentesterland"):
+        result = runner.invoke(cli, ["collect", "--sources", source, "--limit", "5"])
+        assert result.exit_code != 0, f"expected {source!r} to be rejected"

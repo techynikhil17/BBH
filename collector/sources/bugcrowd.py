@@ -1,3 +1,20 @@
+"""Bugcrowd crowdstream collector — DEPRECATED.
+
+Bugcrowd's public crowdstream feed (the only public surface that lists
+disclosed activity) returns acceptance metadata only — ``engagement_name``,
+``target``, ``priority``, ``points`` — with no title, no description, no
+public report URL for most submissions. Verified May 2026 by probing
+``/disclosures``, ``/programs``, ``/bugs``, and ``/crowdstream`` variants;
+all paths route to the same metadata-only endpoint.
+
+The collector is preserved for historical reference and in case Bugcrowd
+ever resurrects a content feed. It is intentionally not registered in
+``collector.main._COLLECTORS`` and is therefore not invokable from the CLI.
+``--sources bugcrowd`` will fail with an "Unknown source" error.
+
+Existing unit tests still pass against the legacy parser.
+"""
+
 from __future__ import annotations
 
 import asyncio
