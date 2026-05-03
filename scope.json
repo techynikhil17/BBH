@@ -1,0 +1,155 @@
+{
+  "program": "shopify",
+  "platform": "hackerone",
+  "program_url": "https://hackerone.com/shopify",
+  "contact_email": "bugbounty@shopify.com",
+
+  "in_scope": [
+    {
+      "asset": "your-store.myshopify.com",
+      "type": "URL",
+      "environment": "core",
+      "notes": "Your development store. Create via https://partners.shopify.com/"
+    },
+    {
+      "asset": "*.myshopify.com",
+      "type": "URL",
+      "environment": "core",
+      "notes": "Use your own development store only — do not test other merchants"
+    },
+    {
+      "asset": "shopify.plus",
+      "type": "URL",
+      "environment": "core",
+      "notes": ""
+    },
+    {
+      "asset": "shop.app",
+      "type": "URL",
+      "environment": "core",
+      "notes": ""
+    },
+    {
+      "asset": "partners.shopify.com",
+      "type": "URL",
+      "environment": "core",
+      "notes": ""
+    },
+    {
+      "asset": "arrive-server.shopifycloud.com",
+      "type": "URL",
+      "environment": "core",
+      "notes": ""
+    },
+    {
+      "asset": "admin.shopify.com",
+      "type": "URL",
+      "environment": "core",
+      "notes": ""
+    },
+    {
+      "asset": "accounts.shopify.com",
+      "type": "URL",
+      "environment": "core",
+      "notes": ""
+    },
+    {
+      "asset": "shopifyinbox.com",
+      "type": "URL",
+      "environment": "non-core",
+      "notes": ""
+    },
+    {
+      "asset": "linkpop.com",
+      "type": "URL",
+      "environment": "non-core",
+      "notes": ""
+    },
+    {
+      "asset": "*.shopifycs.com",
+      "type": "URL",
+      "environment": "non-core",
+      "notes": "PCI compliant credit card handling service"
+    },
+    {
+      "asset": "*.pci.shopifyinc.com",
+      "type": "URL",
+      "environment": "core",
+      "notes": ""
+    },
+    {
+      "asset": "*.shopifykloud.com",
+      "type": "URL",
+      "environment": "non-core",
+      "notes": "May include developer test or third party apps. Email bugbounty@shopify.com if unsure about a subdomain before testing."
+    },
+    {
+      "asset": "*.shopifycloud.com",
+      "type": "URL",
+      "environment": "non-core",
+      "notes": "May include developer test or third party apps. Subdomains like devdegree, vendorvoice, nsolid-test-console are NOT in scope. Email bugbounty@shopify.com if unsure."
+    },
+    {
+      "asset": "*.shopify.io",
+      "type": "URL",
+      "environment": "non-core",
+      "notes": "May include developer test or third party apps. Email bugbounty@shopify.com if unsure before testing."
+    },
+    {
+      "asset": "*.shopify.com",
+      "type": "URL",
+      "environment": "non-core",
+      "notes": "Reviewed per case for bounty eligibility. Third party services without proof of impact on myshopify.com users likely ineligible."
+    },
+    {
+      "asset": "https://github.com/Shopify/*",
+      "type": "source_code",
+      "environment": "non-core",
+      "notes": "Public repositories under Shopify GitHub org"
+    }
+  ],
+
+  "out_of_scope": [
+    "devdegree.shopifycloud.com",
+    "vendorvoice.shopifycloud.com",
+    "nsolid-test-console.shopifycloud.com",
+    "shopifycompass.com"
+  ],
+
+  "out_of_scope_rules": [
+    "Do not test subdomains of *.shopifycloud.com that appear to be developer test or third party applications",
+    "Do not test subdomains of *.shopify.io that appear to be test or third party applications",
+    "Do not test other merchants' myshopify.com stores — only your own development store",
+    "Third party services on *.shopify.com without demonstrated impact on myshopify.com users are ineligible"
+  ],
+
+  "rules": [
+    "No automated scanning",
+    "No DoS or denial of service testing",
+    "No testing against other merchants' stores or data",
+    "Use your own Shopify development store for testing (create at partners.shopify.com)",
+    "No social engineering of Shopify staff or merchants",
+    "No physical security testing",
+    "Email bugbounty@shopify.com before testing any subdomain that looks like a test or third party application",
+    "Staging/development environment preferred where available",
+    "Stop testing immediately if you access data that is not your own"
+  ],
+
+  "priority_targets": [
+    "admin.shopify.com",
+    "accounts.shopify.com",
+    "partners.shopify.com",
+    "your-store.myshopify.com",
+    "shop.app"
+  ],
+
+  "high_value_skill_matches": [
+    "idor",
+    "auth/oauth-misconfig",
+    "auth/jwt-bypass",
+    "ssrf",
+    "logic/race-conditions",
+    "logic/business-logic",
+    "graphql"
+  ]
+}

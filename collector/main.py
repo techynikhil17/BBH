@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 import click
@@ -13,6 +15,7 @@ from rich.table import Table
 
 from .config import ALL_SOURCES, DB_PATH, JSONL_OUTPUT, LOG_DIR
 from .sources.github_writeups import GitHubWriteupsCollector
+from .sources.h1_targeted import load_categories
 from .sources.hackerone import HackerOneCollector
 from .sources.medium_rss import MediumRSSCollector
 from .storage import Storage
@@ -152,6 +155,76 @@ async def _stats() -> None:
     table.add_column("Count", justify="right")
     for k, v in s.items():
         table.add_row(k, str(v))
+    console.print(table)
+
+
+@cli.command("collect-targeted")
+@click.option(
+    "--source-dir",
+    type=click.Path(path_type=Path, file_okay=False, exists=True),
+    required=True,
+    help="Directory containing TOP*.md files (e.g. tops_by_bug_type/)",
+)
+@click.option(
+    "--categories",
+    "-c",
+    multiple=True,
+    required=True,
+    help="Categories to load (repeatable). E.g. --categories ssrf --categories idor",
+)
+@click.option(
+    "--top-n",
+    type=int,
+    default=None,
+    help="Take at most N reports per category (in file order)",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path, dir_okay=False),
+    required=True,
+    help="JSONL output path",
+)
+def collect_targeted(
+    source_dir: Path,
+    categories: tuple[str, ...],
+    top_n: Optional[int],
+    output: Path,
+) -> None:
+    """Load pre-ranked HackerOne reports from local TOP*.md files.
+
+    Offline-only: reads TOP<CATEGORY>.md from --source-dir and writes a JSONL
+    of RawReport objects to --output. Does not hit the network and does not
+    write to the storage DB — produces a dedicated jsonl for downstream
+    extraction.
+    """
+    cats = list(categories)
+    results = load_categories(source_dir, cats, top_n=top_n)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    written = 0
+    seen_urls: set[str] = set()
+    with open(output, "w", encoding="utf-8") as fh:
+        for cat in cats:
+            for report in results.get(cat.lower(), []):
+                if report.url in seen_urls:
+                    continue
+                seen_urls.add(report.url)
+                fh.write(report.model_dump_json() + "\n")
+                written += 1
+
+    table = Table(title="Targeted HackerOne load")
+    table.add_column("Category", style="cyan")
+    table.add_column("File", style="dim")
+    table.add_column("Reports", justify="right", style="green")
+    for cat in cats:
+        items = results.get(cat.lower(), [])
+        filename = f"TOP{cat.upper()}.md"
+        exists = (source_dir / filename).exists()
+        table.add_row(cat, filename if exists else f"{filename} (missing)", str(len(items)))
+    table.caption = (
+        f"Total written: {written} (after cross-category URL dedup) → {output}"
+    )
     console.print(table)
 
 
