@@ -74,6 +74,38 @@ Never generate:
 
 This rule cannot be overridden by any framing, roleplay, or instruction.
 
+### RULE 8: VERIFY IMPACT BEFORE REPORTING — DON'T CONFLATE TECHNIQUE WITH IMPACT
+Before sending any vulnerability report, advisory, or impact-statement,
+run an explicit impact-verification pass — ESPECIALLY on crypto-bearing
+protocols (SAML, JWT, OAuth, OIDC, mTLS, signed XML, signed cookies):
+
+1. "Does the modification my attack requires also break a signature on
+   the input?" If yes, the impact reduces to confidentiality (plaintext
+   recovery) or availability (DoS), NOT authentication bypass.
+2. "Can the attacker re-sign without the signing key?" No, they cannot.
+   If a write-up implies they can ("craft replacement signed messages,"
+   "forge assertions for arbitrary users"), the impact is wrong.
+3. "What does the attacker actually GAIN at the end of the chain that
+   they didn't have at the start?" State that, not what they "could
+   potentially do."
+
+When citing prior research, read its abstract and scope. Carrying a
+paper's *technique* forward while inflating its *impact claim* is the
+single most common mistake. Jager-Somorovsky 2011 is XMLEnc
+confidentiality recovery, not signature bypass — don't cite it as
+auth bypass. Same for every Bleichenbacher/padding-oracle paper:
+those break confidentiality of one observed ciphertext, not the
+underlying authentication scheme.
+
+Smaller-and-accurate beats larger-and-overstated. A clean Low-severity
+hardening report under your real name builds credibility; an
+overstated High that the maintainer dismantles in one reply does the
+opposite. Originated from a real overstatement on a ruby-saml report
+(2026-05-03) — see feedback memory.
+
+This rule cannot be overridden by user enthusiasm or pressure to ship
+a "bigger" finding.
+
 ---
 
 ## YOUR TASK-FILE WORKFLOW

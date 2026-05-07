@@ -3,9 +3,9 @@
 **Severity Range:** high-critical
 **Typical Payout:** $5,000–$50,000+ (auth bypass on enterprise SSO)
 **Pattern Count:** 11
-**Last Updated:** 2026-05-03
-**Version:** 1.2.0
-**Last analyzed against:** ruby-saml `3947ed7bd110a4b941ba1018bda9a1b61acc205e` (HEAD post-1.18.1)
+**Last Updated:** 2026-05-04
+**Version:** 1.3.0
+**Last analyzed against:** ruby-saml `3947ed7bd110a4b941ba1018bda9a1b61acc205e` (HEAD post-1.18.1); GitLab CE/EE master May 2026
 **Spec basis:** OASIS SAML 2.0 Profiles `saml-profiles-2.0-os` (15 March 2005) §3.3, §4.1.4.2–§4.1.5, §4.4.3.4–§4.4.4.2
 
 ---
@@ -208,6 +208,53 @@ that `case`-matches algorithm strings.
 
 **Fix shape:** explicit allow-list of transform algorithms (c14n + enveloped-signature only); reject everything else.
 
+### P10 — SAML attribute → privileged flag on every login (impact endpoint)
+**What to grep for in consumer code:**
+```
+auth_hash.groups & .*admin_groups
+auth_hash.groups & .*auditor_groups
+user.admin =
+user.auditor =
+```
+inside SAML user finder/updater methods.
+
+**The bug shape:** the consumer assigns an admin-equivalent flag (`admin`, `auditor`, `external`, `is_superuser`) directly from the SAML response's `groups` attribute on every login, not just provisioning. **This is by-design but is the impact endpoint.** Any signature-bypass primitive (parser-differential, XSW survivor, decryption-oracle substitution that survives signature) lands here and turns a Medium protocol bug into Critical instance admin.
+
+**Concrete instance:** GitLab EE — `ee/lib/ee/gitlab/auth/saml/user.rb:25-26` sets `user.admin` from `auth_hash.groups & saml_config.admin_groups` on every `find_user` call. If `admin_groups` is configured (operator decision), a SAML response carrying that group name → instance admin. Standard SAML threat model says this is fine because IdP is trusted; but this is exactly the chain target a researcher should look for when evaluating impact of any signature handling bug.
+
+**Why document as a pattern:** when triaging severity of a SAML protocol bug, ALWAYS check the consumer's `find_user`/`find_and_update!` for this pattern. The bug's CVSS is bounded by what privileges the SAML response can grant. If the consumer maps `groups` attribute to `admin = true`, the ceiling is Critical.
+
+### P11 — Mass-assignment of SAML attributes to managed users
+**What to grep for in consumer code:**
+```
+user.assign_attributes(.*auth_hash
+managed_by_group?
+ALLOWED_USER_ATTRIBUTES
+```
+inside SAML user-update flows.
+
+**The bug shape:** `user.assign_attributes(auth_hash.user_attributes.compact)` — Rails mass-assignment of the SAML attribute hash to a user model. If the source `user_attributes` ever includes an admin-class field (today: bounded; tomorrow: a PR away), the assignment writes it without per-attribute gates.
+
+**Concrete instance:** GitLab EE — `ee/lib/gitlab/auth/group_saml/user.rb:117-121` mass-assigns `auth_hash.user_attributes.compact` for `managed_by_group?` users. The `ALLOWED_USER_ATTRIBUTES` allow-list (`ee/lib/gitlab/auth/group_saml/auth_hash.rb:9`) currently limits to `can_create_group` + `projects_limit`. Future extension without re-reviewing the mass-assignment site is the risk.
+
+**Hardening recommendation:** explicit per-attribute assignment instead of `assign_attributes`, OR a model-level filter on which attributes managed users can have changed via SAML.
+
+### P12 — `current_user`-branched authorization callback (login CSRF gap)
+**What to grep for in consumer code:**
+```
+if current_user
+  link_identity\|run_origin_validator
+else
+  sign_in_user_flow
+end
+```
+
+**The bug shape:** the SAML callback controller branches on whether the user is currently logged in. The OriginValidator / `:matches_request_id` enforcement is wired only into the linking flow. The unauthenticated sign-in flow has no SAML-level CSRF defense.
+
+**Concrete instance:** GitLab — `app/controllers/omniauth_callbacks_controller.rb:160-194` (instance) and `ee/app/controllers/groups/omniauth_callbacks_controller.rb:14-24` → parent's `omniauth_flow` (group). Both branch on `current_user`; unauthenticated path skips OriginValidator.
+
+**Industry precedent:** HackerOne #171398 (2016, accepted-as-IdP-initiated-SSO-design at HackerOne the platform). Maintainers commonly reject this class as a tradeoff for IdP-initiated SSO support. Severity ceiling: Medium ($100-$1000 typical).
+
 ### P9 — Certificate trust by fingerprint alone
 **What to grep for:**
 ```
@@ -237,6 +284,10 @@ The following variants were surfaced by reading `lib/xml_security.rb`, `lib/onel
 - **F7 — `Marshal.load(Marshal.dump(document))` round-trip.** `response.rb:1040` round-trips a SignedDocument through Ruby Marshal, then `:1063` re-parses the modified doc via `XMLSecurity::SignedDocument.new(response_node.to_s)`. Three serialize/parse cycles exist between the original Response and the decrypted_document used for validation. The PortSwigger SAML Roulette research showed this class of round-trip mutation in REXML pre-3.4.2.
 - **F8 — `entity_expansion_limit = 0`.** `xml_security.rb:38` sets the REXML class attribute to 0. In some REXML versions "0" means unlimited; in others "0" means no allowance. Worth verifying against the target's pinned Ruby version before claiming either way.
 - **F9 — Cert lookup uses fingerprint-only trust.** `xml_security.rb:269` compares the cert-from-message's fingerprint against the configured fingerprint; no chain validation. Standard for SAML, but a probe target if the SP exposes its fingerprint config.
+- **F10 — `decrypt_element` regex-match crashes on bad plaintext (response.rb:1110).** `elem_plaintext.match(regexp)[0]` indexes into the result of `match` without nil-check. If decryption produces plaintext that does NOT contain the closing `</Assertion>` / `</NameID>` / `</Attribute>` tag, `match` returns `nil`, and `nil[0]` raises `NoMethodError: undefined method '[]' for nil`. **This is a binary oracle:** plaintext-contains-close-tag (proceeds) vs not (crashes). For SPs that surface different responses for these two states, this is a Jager-Somorovsky-style XMLEnc oracle. Combined with **F11** below, it enables per-byte plaintext recovery / substitution against CBC-mode encrypted assertions.
+- **F11 — CBC modes accepted in `retrieve_plaintext` (utils.rb:370-373).** 3DES-CBC, AES-128-CBC, AES-192-CBC, AES-256-CBC are all accepted as valid encryption algorithms for assertion-content decryption. CBC without MAC is vulnerable to ciphertext-bit-flipping and chosen-ciphertext attacks (Jager-Somorovsky 2011 "How To Break XML Encryption"). Modern XMLEnc 1.1 guidance recommends GCM-only. ruby-saml has no allow-list narrowing.
+- **F12 — RSA-1_5 accepted for symmetric-key unwrap (utils.rb:377).** `http://www.w3.org/2001/04/xmlenc#rsa-1_5` is the classic Bleichenbacher-1998 padding-oracle target. Reaches `OpenSSL::PKey::RSA#private_decrypt` without explicit padding-mode hardening. `decrypt_multi` (utils.rb:284) catches `OpenSSL::PKey::PKeyError` and tries the next key — a key-iteration oracle. If the SP returns observably different responses for "RSAError on key 1, success on key 2" vs "all keys errored," this is a Bleichenbacher signal. RSA-OAEP-MGF1P (line 378) is also offered; an attacker who controls the EncryptionMethod algorithm in their crafted EncryptedKey can downgrade.
+- **F13 — `cipher.padding = 0` disables PKCS#7 padding validation (utils.rb:384).** OpenSSL would normally raise `OpenSSL::Cipher::CipherError` on bad PKCS#7 padding. With `padding = 0`, all CBC ciphertext that's a multiple of the block size decrypts to *something* — defense layer removed. The bad-padding signal moves to the regex match (F10), making the oracle distinguishable rather than absorbed by a generic decryption error.
 
 ### Variants worth probing (V1–V10 from Step 4 analysis)
 
@@ -252,6 +303,9 @@ The following variants were surfaced by reading `lib/xml_security.rb`, `lib/onel
 | V8 | Greedy regex post-decryption | response.rb:1110 | Decryption oracle that appends content past `</Assertion>` |
 | V9 | `to_s` round-trip through REXML during decryption substitution | response.rb:1063 | SAML-Roulette `!ATTLIST` mutation; only relevant pre-Ruby-3.4.2 REXML |
 | V10 | `doc_to_validate` switch happens after substitution | response.rb:850–867 | XSW shape that survives `validate_signed_elements` on `decrypted_document` |
+| V11 | `decrypt_element` NoMethodError as binary oracle | response.rb:1110 + utils.rb:368 | Submit modified-CBC-ciphertext encrypted assertions; observe whether SP returns "regex-match-failed crash" (plaintext lacks close tag) vs "subsequent validation error" (plaintext has close tag). Per-byte oracle for Jager-Somorovsky XMLEnc plaintext recovery. Practical when SP surfaces distinct error responses; unreachable when SP returns generic 401 for all decryption-related failures. |
+| V12 | RSA-1_5 Bleichenbacher via algorithm downgrade | utils.rb:377, 351 | EncryptedKey carries `EncryptionMethod/@Algorithm` — attacker-controlled. Substitute `xmlenc#rsa-1_5` for `xmlenc#rsa-oaep-mgf1p` in attacker-crafted EncryptedKey; if SP accepts and `decrypt_multi`'s key-iteration error path is observable, classic Bleichenbacher applies. |
+| V13 | CBC chosen-ciphertext + greedy regex content substitution | response.rb:1110 with regex `/(.*<\/(\w+:)?Assertion>)/m` | Greedy `.*` captures up to LAST `</Assertion>`. Attacker who can manipulate CBC ciphertext such that decrypted plaintext contains `<saml:Assertion attacker-content/></Assertion><saml:Assertion legit/></Assertion>` causes the regex to capture both, but `doc.root[0]` returns the FIRST child. Substitution requires plaintext-position-control which CBC bit-flipping does not directly give; explored further in CHAIN below. |
 
 ### Confirmed closed at HEAD
 
@@ -384,11 +438,53 @@ grep -nE 'entity_expansion_limit' lib/
 | 2026-05-03 | ruby-bbh-r3 | **Naive URI parsing in `extract_signed_element_id` (xml_security.rb:482)** — `reference_element.attribute("URI").value[1..-1]` blindly strips first character without verifying it's `#`. Edge cases mapped: `URI=""` → nil → falls through to `Reference.parent.parent.parent.attribute("ID").value` (3 fixed levels up = expected enveloped Signature parent); `URI="abc"` (no #) → "bc" → looks up wrong ID → no match → validation fails closed; `URI="#"` → "" → no match → fails closed. None of these enable bypass — Nokogiri xpath at line 382 returns empty and `hashed_element.nil?` short-circuits. Code smell, not a bug. | low — code quality | yes — see "VULNERABLE CODE PATTERNS" extension below |
 | 2026-05-03 | ruby-bbh-r3 | **All identity-bearing extractors are properly scoped to `signed_assertion`** — name_id, name_id_format, attributes, sessionindex, conditions, not_before, not_on_or_after, audiences, session_expires_at, and Assertion Issuer all route through `xpath_first_from_signed_assertion` / `xpath_from_signed_assertion` (response.rb:1003/1018). The `signed_assertion` is built from `referenced_xml` (the Nokogiri-canonicalized bytes of the signed element, which is what was hash-matched). Subsequent REXML XPath inside that scope cannot escape the signed bytes. | n/a — confirms defense | yes — V6/V7/V10 closed in FAILED APPROACHES |
 | 2026-05-03 | ruby-bbh-r3 | **By-design unsigned outer-Response extractors:** `destination` (response.rb:344), `in_response_to` (331), `status_code` (237), `status_message` (260), and Response-level `Issuer` (307) all read from the original unsigned `document`. SAML 2.0 only requires the Assertion (or whole Response) to be signed; the outer-Response wrapper is commonly unsigned. **Residual concern:** in IdP-initiated SSO with `validate_in_response_to` disabled, an attacker who captures any signed Assertion can wrap it in their own Response with attacker-chosen `Destination` matching the SP's ACS — this is SAML Assertion Replay, the canonical class. ruby-saml's `validate_audience` and `validate_in_response_to` are the configured defenses; if either is disabled in the SP's settings, replay is reachable. | medium — depends on SP config; not a ruby-saml-side bug | yes — see ASSUMPTIONS TO CHALLENGE |
+| 2026-05-03 | ruby-bbh-r4 | **F10: `decrypt_element` raises NoMethodError on plaintext lacking close tag.** `elem_plaintext.match(regexp)[0]` at response.rb:1110 indexes the match without nil-check. Plaintext-contains-close-tag is a binary oracle observable by the SP's response shape. | high (XMLEnc oracle when combined with CBC) | yes — F10 + V11 + chain C2 |
+| 2026-05-03 | ruby-bbh-r4 | **F11: CBC modes accepted (utils.rb:370-373).** 3DES-CBC, AES-128/192/256-CBC all accepted as valid xmlenc algorithms. CBC without MAC is the Jager-Somorovsky 2011 attack target. No allow-list narrowing to GCM-only. | high — XMLEnc CBC malleability | yes — F11 + chain C2 |
+| 2026-05-03 | ruby-bbh-r4 | **F12: RSA-1_5 PKCS#1 v1.5 padding accepted (utils.rb:377).** Bleichenbacher target. `decrypt_multi`'s key-iteration error path is a potential oracle if SP differentiates errors. | medium — Bleichenbacher precondition bar | yes — F12 + V12 + chain C3 |
+| 2026-05-03 | ruby-bbh-r4 | **F13: `cipher.padding = 0` removes PKCS#7 defense layer (utils.rb:384).** Bad-padding ciphertext no longer raises at OpenSSL — the failure signal moves to F10's regex match, making the oracle distinguishable. | high — amplifies F10 oracle distinguishability | yes — F13 + chain C2 |
+| 2026-05-03 | ruby-bbh-r4 | **C1 chain confirmed real but bounded:** F4+S12 = forced logout of arbitrary user by NameID. Does NOT chain to ATO without an additional SP-side primitive (XSS, open-redirect, RelayState abuse). Documented as forced-logout-only. | medium (DoS / session disruption) | yes — chain C1 |
+| 2026-05-03 | ruby-bbh-r4 | **C2 chain — XMLEnc CBC oracle via F10+F11+F13** is the most promising un-mitigated bug class on ruby-saml's encrypted-assertion path. Requires SP that (a) accepts encrypted assertions, (b) IdP issues CBC mode, (c) SP error responses differentiate decryption-crash from validation-fail. When all three hold, plaintext recovery → ATO. | high if SP differentiates errors; otherwise low | yes — chain C2 |
+| 2026-05-03 | ruby-bbh-r4 | **S5 verified — bearer NotBefore is processed not rejected.** validate_subject_confirmation (response.rb:813) treats NotBefore as a validity-window check rather than rejecting per spec MUST NOT. Spec violation, but more-restrictive not less; not security-impacting on its own. | low (compliance, not exploit) | yes — confirms S5 spec table entry |
 
 ---
 
 ## ATTACK CHAINS DISCOVERED
 
+### C1 — Forced logout of arbitrary user (F4 + S12, ruby-bbh-r4 confirmed)
+**Status:** Real, low–medium severity, NOT ATO on its own.
+
+**Chain:** Attacker submits POST-binding LogoutRequest with `<saml:NameID>victim@example.com</saml:NameID>` and no XML signature → `SloLogoutrequest#validate_signature` returns `true` (F4) → `slo.is_valid?` is `true` → consumer SP's logout handler reads `slo.name_id` and terminates the named user's session (S12: NameID-to-current-session matching is consumer's responsibility, frequently absent).
+
+**Required preconditions:**
+- SP exposes a SLO endpoint that accepts POST-binding (HTTP-Redirect-only deployments are immune at this primitive).
+- Consumer code calls `slo.is_valid?` and trusts the result.
+- Consumer code does not separately verify NameID matches the requester's authenticated session.
+- `:get_params['Signature']` is not set (the attacker controls this; just don't send it).
+
+**Reach to ATO — does NOT directly chain.** After forced logout the victim re-authenticates through the IdP, a new assertion is issued, the IdP→browser→SP path delivers the assertion to the SP. Attacker doesn't intercept this. Without an additional SP-side primitive (XSS that captures the new session cookie, an open redirect that sits between IdP and SP, a SAML RelayState-controlled landing that exposes the cookie cross-origin), ATO is not reached. **Verdict: forced-logout-only.**
+
+**Documented in F4 + S12. No new code change needed; existing remediation applies.**
+
+### C2 — XMLEnc CBC oracle via decrypt_element regex crash (F10 + F11 + F13)
+**Status:** Reachable when SP exposes distinct responses for "decryption-malformed" vs "subsequent-validation-failed."
+
+**Chain:** Encrypted assertion arrives → `decrypt_element` calls `retrieve_plaintext` (utils.rb:368) → CBC mode is accepted (F11), padding validation disabled (F13) → ciphertext-bit-flipping by attacker produces predictable XOR'd plaintext deltas without raising at the OpenSSL layer → `elem_plaintext.match(regexp)` either succeeds (close-tag present in modified plaintext) or returns nil → `nil[0]` raises NoMethodError (F10) → SP returns observably different response.
+
+**Per-byte oracle:** for each ciphertext byte, attacker can determine whether flipping it leaves `</Assertion>` intact in the plaintext. This is the standard XMLEnc-CBC attack from Jager-Somorovsky 2011, made cleanly observable here by the bare `[0]` indexing on the match result.
+
+**Realistic exploitability: medium-low.** Requires (a) SP that uses encrypted assertions (`want_assertions_encrypted` or consumer-side decryption), (b) IdP using CBC mode (still common in older deployments), (c) SP error responses that differentiate decryption-crash from validation-fail. Many SPs collapse both to a generic 401, blocking the oracle. But where (a)+(b)+(c) hold, plaintext recovery is feasible — and once plaintext is recovered, the attacker can craft replacement encrypted assertions for arbitrary identities. **That IS ATO.**
+
+**Hardening required (multiple independent fixes, any of which closes the chain):**
+- Reject CBC algorithms in `retrieve_plaintext`'s allow-list (GCM-only).
+- Wrap `elem_plaintext.match(regexp)` in a nil-check; raise a uniform ValidationError so error responses don't differentiate.
+- Reject RSA-1_5 in favor of RSA-OAEP-MGF1P only.
+
+### C3 — RSA-1_5 Bleichenbacher via key-iteration error oracle (F12 + V12)
+**Status:** Theoretically reachable; practical bar high (requires SP-error-response differential AND many oracle queries).
+
+**Chain:** Attacker crafts EncryptedKey with `Algorithm="xmlenc#rsa-1_5"` (line 377) → `decrypt_multi` (utils.rb:284) iterates SP's private keys, raising `OpenSSL::PKey::PKeyError` on padding mismatch → if SP's response differs based on which key in the list raised, attacker has a per-key oracle bit per query → with enough queries, classic Bleichenbacher recovers the symmetric key.
+
+**Practical exploitability: low.** Modern Ruby/OpenSSL builds use constant-time RSA decryption and don't always leak padding errors. The `decrypt_multi` catch swallows the specific exception type; whether the SP differentiates response timings/contents based on which key raised is the harder question. **Probe target, not a confirmed exploit.**
 
 ---
 

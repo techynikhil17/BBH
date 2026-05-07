@@ -1,4 +1,5 @@
 .env
+.playwright-mcp/
 data/raw/
 data/logs/
 data/reports.db
