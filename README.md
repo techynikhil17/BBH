@@ -1,0 +1,1 @@
+This relository contains skill files created after deeep research on various web2 and web3 attacks, and also saml related attacks. The skill files were crated by taking 100s of disclosed reports from reputed platforms like Hackerone, BugCrowd, github writeups and were given to claude code to learn the patterns and create these skill filez.
